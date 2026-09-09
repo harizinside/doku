@@ -1,0 +1,42 @@
+{
+  "name": "doku",
+  "version": "0.1.0",
+  "description": "DOKU Payment Gateway SDK for Node.js (TypeScript, ESM, zero runtime dependencies)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc -p tsconfig.test.json && node --test \"dist-test/test/*.test.js\"",
+    "generate": "node scripts/generate-products.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "doku",
+    "payment",
+    "gateway",
+    "snap",
+    "virtual-account",
+    "indonesia"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github-personal/harizinside/doku.git"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.0"
+  }
+}
