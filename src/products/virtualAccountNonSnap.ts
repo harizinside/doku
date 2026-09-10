@@ -142,7 +142,15 @@ export interface BcaVaUpdateRequest {
   customer?: VaCustomer;
 }
 
-/** POST /bca-virtual-account/v2/payment-code */
+/**
+ * POST /bca-virtual-account/v2/payment-code
+ *
+ * Note: the source Postman collection has a copy-paste bug and points this
+ * request at /bri-virtual-account/v2/merchant-payment-code (a path with no
+ * corresponding BRI folder anywhere else in the collection). Verified against
+ * DOKU's official docs (jokul.doku.com) that /bca-virtual-account/v2/payment-code
+ * is correct here — same path as the update call below, just POST vs PATCH.
+ */
 export function bcaGeneratePaymentCode(
   client: DokuClient,
   body: BcaVaGenerateRequest,

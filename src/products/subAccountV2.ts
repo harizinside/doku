@@ -210,7 +210,9 @@ export async function transactionStatus(
 export async function splitRules(
   client: DokuClient, options?: SubAccountV2SnapOptions
 ): Promise<unknown> {
-  return client.requestNonSnap("POST", "/sub-account/v2.0/split-rules", undefined);
+  return client.requestSnap("POST", "/sub-account/v2.0/split-rules", {
+    channelId: options?.channelId,
+  });
 }
 
 export interface PointTopupTransferInquiryBody {

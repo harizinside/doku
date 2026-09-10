@@ -26,7 +26,7 @@ const argVal = (name) => {
 const FORCE = args.includes("--force");
 
 const collectionPath = resolve(
-  argVal("--collection") ?? join(pkgRoot, "..", "collection.json"),
+  argVal("--collection") ?? join(pkgRoot, "collection.json"),
 );
 if (!existsSync(collectionPath)) {
   console.error(`collection.json not found at ${collectionPath}`);
@@ -161,7 +161,21 @@ function prerequestScript(item) {
 }
 
 function detectScheme(item) {
+  const headers = (item.request.header || []).map((h) => h.key.toLowerCase());
   const script = prerequestScript(item);
+
+  // Headers are the ground truth for Non-SNAP vs SNAP: some SNAP requests
+  // (e.g. Sub Account V2 "Split Rules") have no pre-request script of their
+  // own and just reuse a sibling request's cached token/signature variables,
+  // so script-sniffing alone misses them and silently falls back to Non-SNAP.
+  if (headers.includes("x-signature")) {
+    return /shared_key/.test(script) ? "snapShared" : "snap";
+  }
+  if (headers.includes("client-id") && headers.includes("signature")) {
+    return "nonSnap";
+  }
+
+  // No headers of its own (rare) — fall back to script content.
   if (/HmacSHA512/.test(script)) {
     return /shared_key/.test(script) ? "snapShared" : "snap";
   }
