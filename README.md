@@ -102,11 +102,48 @@ B2B tokens are cached in-memory until shortly before expiry; B2B2C tokens are ca
   `splitSettlementCheckStatus` / `splitSettlementEdit` / `splitSettlementCancel`.
 - **Custom settlement report**: add `additional_info.report[]` (`key` ≤ 64 chars,
   `value` ≤ 128 chars); the pairs become columns in the settlement report export.
+- **Bulk registration bank**: manage settlement bank accounts host-to-host with
+  `createSettlementBankAccount` / `updateSettlementBankAccount` / `getSettlementBankAccount`
+  (`bank_account: { code, number, name, currency, country }`). Must be activated for your
+  merchant account in the DOKU dashboard first; `update`/`get` need the account's
+  `bank_account_settlement_id` / `{bankCode}/{accountNumber}`.
 
-> **Host caveat:** the docs show the split-settlement host only as the placeholder
+> **Host caveat:** the docs show the split-settlement and bulk-registration-bank host only as the placeholder
 > `{sandbox|production}.doku.com/fc-h2h-api`. `releaseSettlement` uses the confirmed
 > `{api|api-sandbox}.doku.com/finance/v1/release`. If you learn the concrete fc-h2h host,
 > pass `financeBaseUrl: "https://…/fc-h2h-api"` to `createDokuClient`.
+
+## Handling notifications
+
+DOKU calls your Notification URL (configured in DOKU Back Office) with the same Non-SNAP
+signature scheme, just in reverse — verify it with the raw body and headers:
+
+```ts
+import { parseDokuNotification } from "doku";
+
+app.post("/api/doku/notifications", express.text({ type: "*/*" }), (req, res) => {
+  const rawBody = req.body; // must be the exact bytes DOKU sent — see caveat below
+  const ok = doku.verifyNotification({
+    headers: req.headers,
+    rawBody,
+    notificationPath: "/api/doku/notifications", // your route's own path
+  });
+  if (!ok) return res.sendStatus(401);
+
+  const notification = parseDokuNotification(rawBody);
+  if (notification.transaction.status === "SUCCESS") {
+    // mark notification.order.invoice_number as paid — make this idempotent,
+    // DOKU may redeliver the same notification more than once
+  }
+  res.sendStatus(200); // DOKU only requires HTTP 200 to consider it delivered
+});
+```
+
+> **Raw body caveat:** the signature is a digest of the exact bytes DOKU sent. A body
+> parser that parses-then-lets-you-re-`JSON.stringify` it (e.g. Express's default
+> `express.json()`) can reorder keys or change whitespace, breaking verification — use a
+> raw/text body parser for this route specifically (`express.text({ type: "*/*" })` above;
+> in Next.js, read `await request.text()` before any `.json()` call).
 
 ## API coverage
 
@@ -114,7 +151,7 @@ B2B tokens are cached in-memory until shortly before expiry; B2B2C tokens are ca
 | --- | --- | --- |
 | `checkout` | 1 | Initiate payment, deep-typed from docs |
 | `virtualAccountNonSnap` | 14 | 7 banks × generate/update, doc-annotated |
-| `virtualAccountSnap` | 11 | 11 banks, create-va, incl. `partnerServiceId` helper |
+| `virtualAccountSnap` | 12 | 11 banks create-va + SNAP check status, incl. `partnerServiceId` helper |
 | `creditCard` | 2 | Payment page + refund |
 | `emoney` | 4 | Legacy OVO (check_sum), SNAP debit h2h, ShopeePay |
 | `o2o`, `paylater`, `directTransfer` | 6 | Generated |
@@ -122,8 +159,8 @@ B2B tokens are cached in-memory until shortly before expiry; B2B2C tokens are ca
 | `directDebitSnap` | 34 | OVO/CIMB/ALLO/BRI/Mandiri/Dana/ShopeePay |
 | `kki` | 7 | Kartu Kredit Indonesia |
 | `subAccountV1` / `subAccountV2` | 4 / 16 | Wallet-as-a-Service |
-| `misc` | 1 | Check Status API |
-| `settlement` | 4 | Split check-status/edit/cancel + release (hand-typed from docs) |
+| `misc` | 1 | Check Status API (Non-SNAP, cross-product) |
+| `settlement` | 7 | Split check-status/edit/cancel, release, bulk bank account create/update/get (hand-typed from docs) |
 
 **Typing tiers.** Checkout, Credit Card, both VA families, Check Status and all of
 `settlement` are hand-typed against developers.doku.com. The remaining generated modules

@@ -1,5 +1,11 @@
 import { DokuClient, type DokuClientConfig, type DokuEnv } from "./core/client.js";
 import { DokuApiError } from "./core/http.js";
+import {
+  type DokuNotification,
+  parseDokuNotification,
+  type VerifyNotificationInput,
+  verifyNotificationSignature,
+} from "./core/notification.js";
 import { partnerServiceId, signNonSnap, signSnapRequest, signSnapToken } from "./core/signature.js";
 import * as checkout from "./products/checkout.js";
 import * as creditCard from "./products/creditCard.js";
@@ -117,3 +123,5 @@ export function createDokuClient(config: DokuClientConfig): DokuClientWithProduc
 export { DokuClient, DokuApiError };
 export type { DokuClientConfig, DokuEnv };
 export { partnerServiceId, signNonSnap, signSnapRequest, signSnapToken };
+export { parseDokuNotification, verifyNotificationSignature };
+export type { DokuNotification, VerifyNotificationInput };

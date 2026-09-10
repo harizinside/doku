@@ -158,6 +158,10 @@ export interface ReleaseSettlementResponse {
   };
   transaction?: {
     original_request_id?: string;
+    /** yyyy-mm-dd, settlement date (H+1) */
+    settlement_date?: string;
+    /** Amount actually settled, after fees are deducted */
+    settlement_amount?: number;
   };
 }
 
@@ -176,5 +180,97 @@ export async function releaseSettlement(
     body as unknown as Record<string, unknown>,
     client.financeApiBase,
   )) as ReleaseSettlementResponse;
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Bulk Registration Bank (host-to-host, Non-SNAP signing)
+// ---------------------------------------------------------------------------
+
+export interface SettlementBankAccount {
+  /** Bank transfer code */
+  code: string;
+  /** Account number, numeric only */
+  number: string;
+  /** Account holder name, min 2 chars */
+  name: string;
+  /** ISO 4217 currency code */
+  currency: string;
+  /** ISO 3166-1 alpha-2 country code */
+  country: string;
+}
+
+export interface CreateSettlementBankAccountRequest {
+  bank_account: SettlementBankAccount;
+}
+
+export interface UpdateSettlementBankAccountRequest {
+  bank_account: SettlementBankAccount & {
+    /** Bank Settlement ID of the account being updated (must already be "VERIFIED") */
+    bank_account_settlement_id: string;
+  };
+}
+
+export interface SettlementBankAccountResponse {
+  bank_account?: SettlementBankAccount & {
+    status?: "VERIFIED" | "UNVERIFIED" | (string & {});
+    bank_account_settlement_id?: string;
+  };
+}
+
+/**
+ * Register a new settlement bank account — POST /v2/settlement-bank-account
+ * (same `fc-h2h-api` host caveat as Split Settlement; must be activated for the
+ * merchant account in the DOKU dashboard first).
+ */
+export async function createSettlementBankAccount(
+  client: DokuClient,
+  body: CreateSettlementBankAccountRequest,
+): Promise<SettlementBankAccountResponse> {
+  const base = client.config.financeBaseUrl ?? client.financeApiBase;
+  const result = (await client.requestNonSnap(
+    "POST",
+    "/v2/settlement-bank-account",
+    body as unknown as Record<string, unknown>,
+    base,
+  )) as SettlementBankAccountResponse;
+  return result;
+}
+
+/**
+ * Update a settlement bank account — PUT /v2/settlement-bank-account
+ * Only applies to accounts already in "VERIFIED" state (same host caveat as above).
+ */
+export async function updateSettlementBankAccount(
+  client: DokuClient,
+  body: UpdateSettlementBankAccountRequest,
+): Promise<SettlementBankAccountResponse> {
+  const base = client.config.financeBaseUrl ?? client.financeApiBase;
+  const result = (await client.requestNonSnap(
+    "PUT",
+    "/v2/settlement-bank-account",
+    body as unknown as Record<string, unknown>,
+    base,
+  )) as SettlementBankAccountResponse;
+  return result;
+}
+
+/**
+ * Look up a settlement bank account by bank code + account number —
+ * GET /v2/settlement-bank-account/{bankCode}/{accountNumber} (same host caveat as above).
+ */
+export async function getSettlementBankAccount(
+  client: DokuClient,
+  bankCode: string,
+  accountNumber: string,
+): Promise<SettlementBankAccountResponse> {
+  const base = client.config.financeBaseUrl ?? client.financeApiBase;
+  const path = `/v2/settlement-bank-account/${encodeURIComponent(bankCode)}/${encodeURIComponent(accountNumber)}`;
+  const result = (await client.requestNonSnap(
+    "GET",
+    path,
+    undefined,
+    base,
+  )) as SettlementBankAccountResponse;
   return result;
 }

@@ -12,6 +12,7 @@ import {
 } from "../src/core/signature.js";
 import { DokuClient } from "../src/core/client.js";
 import { createDokuClient } from "../src/index.js";
+import { parseDokuNotification, verifyNotificationSignature } from "../src/core/notification.js";
 
 const CLIENT_ID = "MCH-0001-10791114622547";
 const SECRET = "SK-testsecret";
@@ -241,7 +242,9 @@ describe("DokuClient", () => {
     assert.match(headers["Request-Id"], /^[0-9a-f-]{36}$/);
     assert.match(headers["Request-Timestamp"], /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
     assert.match(headers["Signature"], /^HMACSHA256=/);
-    assert.equal(captured.init.body, '{"order":{"amount":1}}');
+    // Bodies are sent pretty-printed (JSON.stringify(body, null, 2)); the signature
+    // is computed over this exact string, so wire format and digest stay consistent.
+    assert.equal(captured.init.body, '{\n  "order": {\n    "amount": 1\n  }\n}');
   });
 
   it("caches the SNAP B2B token across calls", async () => {
@@ -289,5 +292,113 @@ describe("DokuClient", () => {
         return true;
       },
     );
+  });
+});
+
+describe("verifyNotificationSignature", () => {
+  const notificationPath = "/api/doku/notifications";
+  const rawBody = '{"order":{"invoice_number":"INV-1","amount":10000},"transaction":{"status":"SUCCESS"}}';
+
+  function sign(requestId: string, requestTimestamp: string): string {
+    return signNonSnap({
+      clientId: CLIENT_ID,
+      requestId,
+      requestTimestamp,
+      requestTarget: notificationPath,
+      body: rawBody,
+      secretKey: SECRET,
+    });
+  }
+
+  it("accepts a correctly-signed notification", () => {
+    const requestId = "a438194b-ed79-421a-adb6-062496b08c7b";
+    const requestTimestamp = "2023-01-06T06:27:14Z";
+    const ok = verifyNotificationSignature({
+      headers: {
+        "Client-Id": CLIENT_ID,
+        "Request-Id": requestId,
+        "Request-Timestamp": requestTimestamp,
+        Signature: sign(requestId, requestTimestamp),
+      },
+      rawBody,
+      notificationPath,
+      secretKey: SECRET,
+    });
+    assert.equal(ok, true);
+  });
+
+  it("is header-case-insensitive (as HTTP headers are)", () => {
+    const requestId = "req-1";
+    const requestTimestamp = "2023-01-06T06:27:14Z";
+    const ok = verifyNotificationSignature({
+      headers: {
+        "client-id": CLIENT_ID,
+        "request-id": requestId,
+        "request-timestamp": requestTimestamp,
+        signature: sign(requestId, requestTimestamp),
+      },
+      rawBody,
+      notificationPath,
+      secretKey: SECRET,
+    });
+    assert.equal(ok, true);
+  });
+
+  it("rejects a tampered body", () => {
+    const requestId = "req-2";
+    const requestTimestamp = "2023-01-06T06:27:14Z";
+    const ok = verifyNotificationSignature({
+      headers: {
+        "Client-Id": CLIENT_ID,
+        "Request-Id": requestId,
+        "Request-Timestamp": requestTimestamp,
+        Signature: sign(requestId, requestTimestamp),
+      },
+      rawBody: rawBody.replace("10000", "1"),
+      notificationPath,
+      secretKey: SECRET,
+    });
+    assert.equal(ok, false);
+  });
+
+  it("rejects the wrong notification path (a different route's signature)", () => {
+    const requestId = "req-3";
+    const requestTimestamp = "2023-01-06T06:27:14Z";
+    const ok = verifyNotificationSignature({
+      headers: {
+        "Client-Id": CLIENT_ID,
+        "Request-Id": requestId,
+        "Request-Timestamp": requestTimestamp,
+        Signature: sign(requestId, requestTimestamp),
+      },
+      rawBody,
+      notificationPath: "/somewhere/else",
+      secretKey: SECRET,
+    });
+    assert.equal(ok, false);
+  });
+
+  it("rejects when a required header is missing", () => {
+    const ok = verifyNotificationSignature({
+      headers: { "Client-Id": CLIENT_ID },
+      rawBody,
+      notificationPath,
+      secretKey: SECRET,
+    });
+    assert.equal(ok, false);
+  });
+});
+
+describe("parseDokuNotification", () => {
+  it("parses a well-formed notification", () => {
+    const n = parseDokuNotification(
+      '{"order":{"invoice_number":"INV-1","amount":10000},"transaction":{"status":"SUCCESS"}}',
+    );
+    assert.equal(n.order.invoice_number, "INV-1");
+    assert.equal(n.transaction.status, "SUCCESS");
+  });
+
+  it("throws on a body that isn't a DOKU notification", () => {
+    assert.throws(() => parseDokuNotification('{"hello":"world"}'));
   });
 });

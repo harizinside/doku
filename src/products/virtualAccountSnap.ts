@@ -218,4 +218,52 @@ export function briSnapCreateVa(
   );
 }
 
+// ---------------------------------------------------------------------------
+// Check Status (SNAP) — POST /orders/v1.0/transfer-va/status
+// ---------------------------------------------------------------------------
+
+export interface SnapCheckStatusRequest {
+  /** 8-char partner service id, same as used to create the VA */
+  partnerServiceId: string;
+  /** Max length: 20 */
+  customerNo: string;
+  /** partnerServiceId + customerNo, max length: 28 */
+  virtualAccountNo: string;
+  /**
+   * Conditional: omit to get back an array of all transactions on this VA;
+   * set to a specific inquiry's id to check just that one. Max length: 128
+   */
+  inquiryRequestId?: string;
+  /** Required if a payment has occurred. Max length: 128 */
+  paymentRequestId?: string;
+  additionalInfo?: Record<string, unknown>;
+}
+
+export interface SnapCheckStatusResponse {
+  responseCode?: string;
+  responseMessage?: string;
+  virtualAccountData?: {
+    paymentFlagStatus?: string;
+    paymentFlagReason?: { english?: string; indonesia?: string };
+    paidAmount?: SnapMoneyAmount;
+    [key: string]: unknown;
+  };
+  additionalInfo?: { acquirer?: { id?: string }; [key: string]: unknown };
+  [key: string]: unknown;
+}
+
+/**
+ * Check Status API (SNAP) — POST /orders/v1.0/transfer-va/status
+ * docs.doku.com: Get Started > Check Status API > SNAP. Query at least 60
+ * seconds after payment completion for an accurate status.
+ */
+export function checkVaStatus(
+  client: DokuClient,
+  body: SnapCheckStatusRequest,
+): Promise<SnapCheckStatusResponse> {
+  return client.requestSnap("POST", "/orders/v1.0/transfer-va/status", {
+    body,
+  }) as Promise<SnapCheckStatusResponse>;
+}
+
 export { partnerServiceId };

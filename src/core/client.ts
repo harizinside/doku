@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { DokuApiError, httpRequest, type HttpResult } from "./http.js";
 import {
+  type VerifyNotificationInput,
+  verifyNotificationSignature,
+} from "./notification.js";
+import {
   nonSnapTimestamp,
   signNonSnap,
   signSnapRequest,
@@ -104,7 +108,7 @@ export class DokuClient {
   ): Promise<unknown> {
     const requestId = randomUUID();
     const requestTimestamp = nonSnapTimestamp();
-    const rawBody = body === undefined ? undefined : JSON.stringify(body);
+    const rawBody = body === undefined ? undefined : JSON.stringify(body, null, 2);
     const signature = signNonSnap({
       clientId: this.config.clientId,
       requestId,
@@ -190,7 +194,7 @@ export class DokuClient {
         "X-TIMESTAMP": timestamp,
         "X-SIGNATURE": xSignature,
       },
-      JSON.stringify(body),
+      JSON.stringify(body, null, 2),
     );
     const parsed = (result.body ?? {}) as {
       accessToken?: string;
@@ -229,7 +233,7 @@ export class DokuClient {
   ): Promise<unknown> {
     const accessToken = await this.snapB2BToken();
     const timestamp = snapTimestamp();
-    const rawBody = options.body === undefined ? "" : JSON.stringify(options.body);
+    const rawBody = options.body === undefined ? "" : JSON.stringify(options.body, null, 2);
     const xSignature = signSnapRequest({
       httpMethod: method.toUpperCase(),
       endpointUrl: targetPath,
@@ -259,5 +263,14 @@ export class DokuClient {
       rawBody === "" ? undefined : rawBody,
     );
     return result.body;
+  }
+
+  /**
+   * Verify a DOKU HTTP Notification's `Signature` header using this client's
+   * secret key. See `verifyNotificationSignature` for details; `parseDokuNotification`
+   * (exported from the package root) parses the body once verified.
+   */
+  verifyNotification(input: Omit<VerifyNotificationInput, "secretKey">): boolean {
+    return verifyNotificationSignature({ ...input, secretKey: this.config.secretKey });
   }
 }
