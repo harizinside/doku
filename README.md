@@ -11,7 +11,9 @@ Settlement APIs (Split Settlement, Hold & Release, Custom Settlement Report).
 ## Install
 
 ```sh
-npm install git+ssh://git@github-personal/harizinside/doku.git
+npm install git+ssh://git@github.com/harizinside/doku.git
+# or, once the repo is public:
+npm install github:harizinside/doku
 ```
 
 > **Server-only.** This SDK signs requests with your DOKU secret/private keys using
