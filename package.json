@@ -1,6 +1,9 @@
 {
-  "name": "doku",
+  "name": "@harizinside/doku",
   "version": "0.1.1",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "DOKU Payment Gateway SDK for Node.js (TypeScript, ESM, zero runtime dependencies)",
   "type": "module",
   "main": "./dist/index.js",
