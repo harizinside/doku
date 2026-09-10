@@ -10,11 +10,17 @@ Settlement APIs (Split Settlement, Hold & Release, Custom Settlement Report).
 
 ## Install
 
+Pin to a release tag so installs never pick up untested WIP from `main`:
+
 ```sh
-npm install git+ssh://git@github.com/harizinside/doku.git
-# or, once the repo is public:
-npm install github:harizinside/doku
+npm install github:harizinside/doku#v0.1.1
+# or over SSH:
+npm install git+ssh://git@github.com/harizinside/doku.git#v0.1.1
 ```
+
+> `npm install github:harizinside/doku` (no `#ref`) always tracks the tip of `main` —
+> fine if you want every fix immediately, but it installs untested WIP the moment it
+> lands.
 
 > **Server-only.** This SDK signs requests with your DOKU secret/private keys using
 > `node:crypto`. Only import it from server code — Next.js Route Handlers / Server
@@ -181,6 +187,21 @@ npm run generate     # re-run codegen against a fresh collection.json export
 
 `collection.json` (the Postman export) is a local codegen input only — it is
 gitignored and must never be published: it contains sandbox credentials.
+
+### Releasing a new version
+
+One rule: **never hand-edit `"version"` in `package.json`.** Bump with `npm version`:
+
+```sh
+npm version patch   # or minor / major — requires a clean working tree
+git push --follow-tags
+```
+
+`npm version` bumps `package.json`, commits, and tags `vX.Y.Z` in one step; a
+`postversion` hook then syncs the new version into `jsr.json` (for publishing to
+JSR as `@harizinside/doku`, via `npx jsr publish`) and amends it into the same
+commit, so the three never drift apart. Consumers install the new release with
+`npm install github:harizinside/doku#vX.Y.Z`.
 
 ## Known caveats
 

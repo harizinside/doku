@@ -18,7 +18,9 @@
     "prepare": "npm run build",
     "build": "tsc",
     "test": "tsc -p tsconfig.test.json && node --test \"dist-test/test/*.test.js\"",
-    "generate": "node scripts/generate-products.mjs"
+    "generate": "node scripts/generate-products.mjs",
+    "publish:jsr": "npx jsr publish --dry-run",
+    "version": "node scripts/sync-jsr-version.mjs && git add jsr.json"
   },
   "engines": {
     "node": ">=18"
