@@ -18,6 +18,10 @@ npm install github:harizinside/doku#v0.1.1
 npm install git+ssh://git@github.com/harizinside/doku.git#v0.1.1
 ```
 
+> **npm 12+:** git-hosted installs are opt-in now (`allow-git` defaults to `none`),
+> so use `npm install --allow-git=all github:harizinside/doku#v0.1.1` once, or add
+> `allow-git=all` to your project's `.npmrc`.
+
 > `npm install github:harizinside/doku` (no `#ref`) always tracks the tip of `main` —
 > fine if you want every fix immediately, but it installs untested WIP the moment it
 > lands.
