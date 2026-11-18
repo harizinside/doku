@@ -10,7 +10,18 @@ Settlement APIs (Split Settlement, Hold & Release, Custom Settlement Report).
 
 ## Install
 
-Pin to a release tag so installs never pick up untested WIP from `main`:
+```sh
+npm install @harizinside/doku
+```
+
+The import specifier is the same on JSR and Deno:
+
+```sh
+npx jsr add @harizinside/doku     # npm/Node, resolved from JSR
+deno add jsr:@harizinside/doku     # Deno
+```
+
+To pin to a release tag so installs never pick up untested WIP from `main`:
 
 ```sh
 npm install github:harizinside/doku#v0.1.1
@@ -26,6 +37,11 @@ npm install git+ssh://git@github.com/harizinside/doku.git#v0.1.1
 > fine if you want every fix immediately, but it installs untested WIP the moment it
 > lands.
 
+> **Registry vs. git installs.** From the npm registry (or JSR) you get the prebuilt
+> `dist/` — no compiler needed. A git dependency is cloned and its `prepare` script runs,
+> which compiles the TypeScript sources with TypeScript 7 (the Go-native compiler); that
+> needs git fetching enabled and a platform with a published TS 7 binary.
+
 > **Server-only.** This SDK signs requests with your DOKU secret/private keys using
 > `node:crypto`. Only import it from server code — Next.js Route Handlers / Server
 > Actions, TanStack Start server functions, etc. Never import it from a `"use client"`
@@ -34,7 +50,7 @@ npm install git+ssh://git@github.com/harizinside/doku.git#v0.1.1
 ## Quick start
 
 ```ts
-import { createDokuClient } from "doku";
+import { createDokuClient } from "@harizinside/doku";
 
 const doku = createDokuClient({
   clientId: process.env.DOKU_CLIENT_ID!,
@@ -59,9 +75,9 @@ await doku.virtualAccountNonSnap.mandiriGeneratePaymentCode({
 });
 
 // SNAP Mandiri VA (B2B token fetch + caching is automatic)
-import { partnerServiceId } from "doku";
+import { partnerServiceId } from "@harizinside/doku";
 await doku.virtualAccountSnap.mandiriSnapCreateVa({
-  partnerServiceId: partnerServiceId("8899"), // -> "   8899"
+  partnerServiceId: partnerServiceId("8899"), // -> "    8899" (8 chars, space-padded)
   trxId: "INV-0002",
   totalAmount: { value: "50000.00", currency: "IDR" },
   virtualAccountName: "Anton",
@@ -131,7 +147,7 @@ DOKU calls your Notification URL (configured in DOKU Back Office) with the same 
 signature scheme, just in reverse — verify it with the raw body and headers:
 
 ```ts
-import { parseDokuNotification } from "doku";
+import { parseDokuNotification } from "@harizinside/doku";
 
 app.post("/api/doku/notifications", express.text({ type: "*/*" }), (req, res) => {
   const rawBody = req.body; // must be the exact bytes DOKU sent — see caveat below
@@ -185,9 +201,12 @@ narrow/cast as needed.
 ```sh
 npm install
 npm run build        # tsc -> dist/
-npm test             # node:test (signature + client behavior, no network)
+npm test             # tsc -p tsconfig.test.json, then node --test (no network)
 npm run generate     # re-run codegen against a fresh collection.json export
 ```
+
+Built and tested with TypeScript 7 (the Go-native compiler) — `npm run build` and
+`npm test` both go through it, so the shipped `dist/` is what TS 7 emits.
 
 `collection.json` (the Postman export) is a local codegen input only — it is
 gitignored and must never be published: it contains sandbox credentials.
@@ -202,9 +221,10 @@ git push --follow-tags
 ```
 
 `npm version` bumps `package.json`, commits, and tags `vX.Y.Z` in one step; a
-`postversion` hook then syncs the new version into `jsr.json` (for publishing to
+`version` lifecycle hook then syncs the new version into `jsr.json` (for publishing to
 JSR as `@harizinside/doku`, via `npx jsr publish`) and amends it into the same
-commit, so the three never drift apart. Consumers install the new release with
+commit, so the three never drift apart. Consumers pick the new release up with
+`npm install @harizinside/doku`, or pin to the tag with
 `npm install github:harizinside/doku#vX.Y.Z`.
 
 ## Known caveats
