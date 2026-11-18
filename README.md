@@ -223,7 +223,9 @@ git push --follow-tags
 `npm version` bumps `package.json`, commits, and tags `vX.Y.Z` in one step; a
 `version` lifecycle hook then syncs the new version into `jsr.json` (for publishing to
 JSR as `@harizinside/doku`, via `npx jsr publish`) and amends it into the same
-commit, so the three never drift apart. Consumers pick the new release up with
+commit, so the three never drift apart. Pushing the tag triggers
+`.github/workflows/release.yml`, which checks the tag matches `package.json`, runs the
+tests and publishes to npm with provenance (npm Trusted Publishing, no token). Consumers pick the new release up with
 `npm install @harizinside/doku`, or pin to the tag with
 `npm install github:harizinside/doku#vX.Y.Z`.
 
